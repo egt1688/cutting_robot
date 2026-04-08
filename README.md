@@ -86,7 +86,6 @@ colcon build
 
 ```bash
 cd ros2_ws
-source install/setup.bash
 ros2 launch cutting_robot cutting_robot.launch.py
 ```
 
