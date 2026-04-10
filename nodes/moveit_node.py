@@ -75,12 +75,12 @@ def add_attached_collision_object(robot_instance):
 
         # Position the mesh so that it is correctly oriented and positioned relative to the tool0 frame
         pose = Pose()
-        pose.position.x = 0.1   # left/right relative to tool0
-        pose.position.y = -0.05  # up/down relative to tool0
-        pose.position.z = 0.24  # forward/back relative to tool0 (along the tool axis)
+        pose.position.x = 0.11   # left/right relative to tool0
+        pose.position.y = -0.01  # up/down relative to tool0
+        pose.position.z = 0.19  # forward/back relative to tool0 (along the tool axis)
 
         pose.orientation.x = 0.0  
-        pose.orientation.y = 0.707 
+        pose.orientation.y = 0.9817477042
         pose.orientation.z = 0.0
         pose.orientation.w = 1.0  
 
