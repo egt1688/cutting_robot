@@ -10,6 +10,9 @@ from moveit_msgs.msg import CollisionObject
 from shape_msgs.msg import SolidPrimitive
 
 import math
+import os
+from ament_index_python.packages import get_package_share_directory
+
 
 def plan_and_execute(
     robot,
@@ -32,10 +35,8 @@ def plan_and_execute(
 
     time.sleep(sleep_time)
 
-import os
-from ament_index_python.packages import get_package_share_directory
-
-def add_attached_collision_object(robot_instance):
+# Load Blade
+def add_attached_collision_object(robot_instance, gripper_frame):
     from moveit_msgs.msg import AttachedCollisionObject, CollisionObject
     from shape_msgs.msg import Mesh, MeshTriangle
     from geometry_msgs.msg import Pose, Point
@@ -66,12 +67,12 @@ def add_attached_collision_object(robot_instance):
 
     with planning_scene_monitor.read_write() as scene:
         attached_object = AttachedCollisionObject()
-        attached_object.link_name = "tool0"
-        attached_object.touch_links = ["tool0"]
+        attached_object.link_name = gripper_frame
+        attached_object.touch_links = [gripper_frame]
 
         obj = CollisionObject()
         obj.id = "attached_tool"
-        obj.header.frame_id = "tool0"
+        obj.header.frame_id = gripper_frame
 
         # Position the mesh so that it is correctly oriented and positioned relative to the tool0 frame
         pose = Pose()
@@ -88,28 +89,22 @@ def add_attached_collision_object(robot_instance):
         obj.mesh_poses = [pose]
         obj.operation = CollisionObject.ADD
 
-        attached_object.object = obj
+        attached_object.object = obj # a way to allow it without collision
         scene.process_attached_collision_object(attached_object)
         scene.current_state.update(True)
 
     time.sleep(1.0)
-    print("Attached mesh object added.")
+    print(f"Attached mesh object added to frame: {gripper_frame}")
 
-def add_collision_object(robot_instance): #     
+def add_collision_object(robot_instance, base_frame): #     
     planning_scene_monitor = robot_instance.get_planning_scene_monitor()
     planning_scene_monitor.wait_for_current_robot_state(rclpy.time.Time(), 10.0) # wait for the current robot state to be available
 
     object_positions = [
-        (0.6096, 0.3048, 0.25), # position of the box
-        # (0.4, 0.0, 0.25), # position of the box
-        # (0.4, -0.3, 0.25), # position of the box
-        # (0.4, 0.3, 0.5), # position of the box
+        (0.9, 0.5, -0.9), # position of the box
     ]
     object_dimensions = [
         (0.1, 0.6096, 0.3048), # dimensions of the box
-        # (0.1, 0.4, 0.1), # dimensions of the box
-        # (0.2, 0.2, 0.2), # dimensions of the box
-        # (0.15, 0.15, 0.15), # dimensions of the box
     ]
 
     with planning_scene_monitor.read_write() as scene:
@@ -140,28 +135,49 @@ def main():
     rclpy.init()
     logger = get_logger("moveit_py_planning_scene")
 
-    abb_irb1200_5_90 = MoveItPy("abb_irb1200_5_90")
-    arm = abb_irb1200_5_90.get_planning_component("manipulator")
-    gripper = "tool0"
-    planning_scene_monitor = abb_irb1200_5_90.get_planning_scene_monitor()
+    # Read robot type form parameter
+    import sys
+    import time
+    robot_type = "abb_irb1200_5_90"
+    for arg in sys.argv:
+        if "robot_type:=" in arg:
+            robot_type = arg.split(":=")[1]
+
+    #time.sleep(5.0)
+
+    # Establish robot-specific environment parameters
+    if robot_type in ["ur5e", "ur10e"]:
+        planning_group = "ur_manipulator"
+        base_frame = "base_link"
+        gripper = "tool0"
+        start_pose = "home"
+        goal_pose = "up"
+        robot = MoveItPy(node_name="moveit_cpp")        
+    else:
+        planning_group = "manipulator"
+        base_frame = "base_link"
+        gripper = "tool0"
+        start_pose = "all_zero"
+        goal_pose = "extended"
+        robot = MoveItPy("abb_irb1200_5_90")
+
+    arm = robot.get_planning_component(planning_group)
+    planning_scene_monitor = robot.get_planning_scene_monitor()
     logger.info("MoveItPy initialized")
 
-    #add_collision_object(planning_scene_monitor)
-    add_collision_object(abb_irb1200_5_90)
-    add_attached_collision_object(abb_irb1200_5_90)
-    arm.set_start_state(configuration_name="all_zero")
-    arm.set_goal_state(configuration_name="extended")
-    plan_and_execute(
-        abb_irb1200_5_90,
-        arm,
-        logger,
-        sleep_time=3.0,
-    )
+    # Add items using the dynamically matched frame parameters
+    add_collision_object(robot, base_frame)
+    add_attached_collision_object(robot, gripper)
+
+    arm.set_start_state(configuration_name=start_pose)
+    arm.set_goal_state(configuration_name=goal_pose)
+    plan_and_execute(robot, arm, logger, sleep_time=3.0)
+
 
     # Check collisions
     with planning_scene_monitor.read_only() as scene:
         robot_state = scene.current_state
-        original_joint_position = robot_state.get_joint_group_positions("manipulator")
+        original_joint_position = robot_state.get_joint_group_positions(planning_group)
 
         # Set the pose goal
         pose_goal = Pose()
@@ -174,28 +190,28 @@ def main():
         pose_goal.orientation.w = 1.0
 
         # Set the robot state and check for collisions
-        robot_state.set_from_ik("manipulator", pose_goal, gripper)
+        robot_state.set_from_ik(planning_group, pose_goal, gripper)
         robot_state.update()
         robot_collision_status = scene.is_state_colliding(
             robot_state=robot_state,
-            joint_model_group_name="manipulator",
+            joint_model_group_name=planning_group,
             verbose=True,
         )
         logger.info(f"Robot collision status: {robot_collision_status}\n")
 
         # Reset the robot state
         robot_state.set_joint_group_positions(
-            "manipulator", 
+            planning_group, 
             original_joint_position
         )
         robot_state.update() # required to update the robot state after setting joint positions
 
-    time.sleep(3.0)
+    #time.sleep(3.0)
 
     arm.set_start_state_to_current_state()
-    arm.set_goal_state(configuration_name="all_zero")
+    arm.set_goal_state(configuration_name=start_pose)
     plan_and_execute(
-        abb_irb1200_5_90,
+        robot,
         arm,
         logger,
         sleep_time=3.0,
