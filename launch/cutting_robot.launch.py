@@ -68,7 +68,7 @@ def launch_setup(context, *args, **kwargs):
         srdf_file = os.path.join(ur_moveit_config_path, "srdf", "ur.srdf.xacro")
         robot_description_config = xacro.process_file(
             xacro_file,
-            mappings={"ur_type": "ur10e", "name": "ur"}
+            mappings={"ur_type": "ur10e", "name": "ur", "use_mock_hardware": "true", "tf_prefix": ""}
         )
         moveit_config = (
             MoveItConfigsBuilder(
@@ -77,7 +77,7 @@ def launch_setup(context, *args, **kwargs):
             )
             .robot_description(
                 file_path=xacro_file,
-                mappings={"ur_type": "ur10e", "name": "ur"}
+                mappings={"ur_type": "ur10e", "name": "ur", "use_mock_hardware": "true",}
             )
             .robot_description_semantic(
                 file_path=srdf_file,
@@ -85,6 +85,7 @@ def launch_setup(context, *args, **kwargs):
             )
             .robot_description_kinematics(file_path="config/kinematics.yaml")
             .joint_limits(file_path="config/joint_limits.yaml")
+            .moveit_cpp(file_path="config/motion_planning.yaml")
             .planning_pipelines(
                 pipelines=["ompl", "chomp", "pilz_industrial_motion_planner"],
                 default_planning_pipeline="ompl"
