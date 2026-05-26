@@ -3,6 +3,8 @@
 ## Overview
 This package generates a motion planning scene in RViz with:
 - ABB IRB1200 5/90 robot arm
+- UR5E robot arm
+- UR10E robot arm
 - Dukane ultrasonic blade (attached to end effector)
 - A configurable block as a collision object
 
@@ -15,6 +17,8 @@ This package generates a motion planning scene in RViz with:
 - MoveIt2
 - Python 3.12+
 - trimesh (`pip install trimesh`)
+- Universal Robots Package
+- ABB Robot Package
 
 ---
 
@@ -86,13 +90,13 @@ colcon build
 
 ```bash
 cd ros2_ws
-ros2 launch cutting_robot cutting_robot.launch.py
+ros2 launch cutting_robot cutting_robot.launch.py robot:= <robot type>
 ```
 
 ---
 
 ## Known Issues
-- Tool mount position on the end effector is still being finalized
+- Duplicate models appearead ir RVIZ
 - Arm motion path is still being finalized
 
 ---
