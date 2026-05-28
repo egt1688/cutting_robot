@@ -68,11 +68,11 @@ object_dimensions = [
 Go to `nodes/moveit_node.py` and find `add_attached_collision_object()`:
 
 ```python
-pose.position.x = 0.1    # left/right relative to tool0
-pose.position.y = -0.05  # up/down relative to tool0
-pose.position.z = 0.24   # along the tool axis (forward/back)
+pose.position.x = 0.11    # left/right relative to tool0
+pose.position.y = -0.01  # up/down relative to tool0
+pose.position.z = 0.19   # along the tool axis (forward/back)
 pose.orientation.x = 0.0
-pose.orientation.y = 0.707
+pose.orientation.y = 0.9817477042
 pose.orientation.z = 0.0
 pose.orientation.w = 1.0
 ```
@@ -90,6 +90,7 @@ colcon build
 
 ```bash
 cd ros2_ws
+source install/setup.bash
 ros2 launch cutting_robot cutting_robot.launch.py robot:= <robot type>
 ```
 
